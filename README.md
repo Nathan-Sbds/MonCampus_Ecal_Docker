@@ -20,7 +20,7 @@ docker run -d --name MonCampus_Ecal_Docker_Container MonCampus_Ecal_Docker
 ```
 ## Configuration
 
-Le fichier `config.json` doit être configuré avec vos informations personnelles et les clés API nécessaires.
+Le fichier `config.json` doit être configuré avec vos informations personnelles et les clés API nécessaires. Veuillez ne pas modifier la valeur de CHROMIUM_EXECUTABLE_PATH ainsi que ERROR_FILE_PATH si vous ne savez pas ce que vous faites.
 
 ```json
 {
