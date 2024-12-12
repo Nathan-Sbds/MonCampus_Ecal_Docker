@@ -1,11 +1,15 @@
-import ecal_api, requests,pyppeteer, pyppeteer.launcher, asyncio, json, os
+import ecal_api, requests, asyncio, json, os, configparser
 from random import randint
 from datetime import timedelta, datetime
 from dateutil import parser
+from selenium import webdriver
+from selenium.webdriver.firefox.service import Service
+from selenium.webdriver.firefox.options import Options
 
 
-with open('/app/config.json') as f:
-    data = json.load(f)
+config = configparser.ConfigParser()
+config.read('config.ini')
+
 
 async def remove_duplicates_from_api(event_api):
     """
@@ -72,49 +76,41 @@ async def remove_duplicates_from_api(event_api):
             ecal_api.EventAPI.delete_event(event_api, duplicate["id"])
 
     except Exception as e:
-        with open(data["ERROR_FILE_PATH"], 'w') as f:
+        with open(config['CONFIG']["ERROR_FILE_PATH"], 'w') as f:
             f.write(str(e))
 
 async def get_cookies():
     """
-    Retrieves login cookies.
-
-    This function launches a headless browser, navigates to the login page, fills in the login form,
-    and retrieves the cookies after a successful login.
-
-    Returns:
-        dict: Dictionary of cookies.
+    Récupère les cookies de session après connexion.
     """
+    username = "MONCAMPUS_USERNAME"
+    password = "MONCAMPUS_PASSWORD"
+    url = "https://ws-edt-igs.wigorservices.net"
+
+    options = Options()
+    options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.binary_location = "/usr/bin/firefox" 
+    
+    service = Service("/usr/local/bin/geckodriver")
+    driver = webdriver.Firefox(service=service, options=options)
+
     try:
-        username = data["MONCAMPUS_USERNAME"]
-        password = data["MONCAMPUS_PASSWORD"]
-        url = "https://ws-edt-igs.wigorservices.net"
+        driver.get(url)
+        
+        # Remplir le formulaire de connexion
+        driver.find_element("id", "username").send_keys(username)
+        driver.find_element("id", "password").send_keys(password)
+        driver.find_element("css selector", "button[type='submit']").click()
+        
+        # Attendre la redirection et récupérer les cookies
+        driver.implicitly_wait(10)  # Peut être ajusté si nécessaire
+        cookies = {cookie['name']: cookie['value'] for cookie in driver.get_cookies()}
+    finally:
+        driver.quit()
 
-        # Launch the browser and open a new page
-        browser = await pyppeteer.launch(
-            executablePath=data["CHROMIUM_EXECUTABLE_PATH"],
-            headless=True,
-            args=['--no-sandbox', '--disable-dev-shm-usage', "--disable-gpu"]
-        )
-        page = await browser.newPage()
-        await page.goto(url)
-
-        # Fill in the login form
-        await page.waitForSelector("#username")
-        await page.type("#username", username)
-        await page.type("#password", password)
-
-        await page.click('button[type="submit"]')
-        await page.waitForSelector("body")
-
-        # Retrieve cookies after login
-        cookies = {cookie['name']: cookie['value'] for cookie in await page.cookies()}
-        await browser.close()
-
-        return cookies
-    except Exception as e:
-        with open(data["ERROR_FILE_PATH"], 'w') as f:
-            f.write(str(e))
+    return cookies
 
 async def fetch_wigor_data(cookies):
     """
@@ -130,13 +126,13 @@ async def fetch_wigor_data(cookies):
         list: List of retrieved data.
     """
     try:
-        start_date = data["MONCAMPUS_START_DATE"]
-        end_date = data["MONCAMPUS_END_DATE"]
+        start_date = config['CONFIG']["MONCAMPUS_START_DATE"]
+        end_date = config['CONFIG']["MONCAMPUS_END_DATE"]
         url = f"https://ws-edt-igs.wigorservices.net/Home/Get?sort=&group=&filter=&dateDebut={start_date}T00:00:00.000Z&dateFin={end_date}T23:59:59.000Z"
         response = requests.get(url, cookies=cookies)
         return response.json()["Data"] if response.status_code == 200 else None
     except Exception as e:
-        with open(data["ERROR_FILE_PATH"], 'w') as f:
+        with open(config['CONFIG']["ERROR_FILE_PATH"], 'w') as f:
             f.write(str(e))
 
 def format_event_data(item):
@@ -163,7 +159,7 @@ def format_event_data(item):
         return {
             "name": item['Commentaire'],
             "location": item['Salles'],
-            "calendarId": data["ECAL_CALENDAR_ID"],
+            "calendarId": config['CONFIG']["ECAL_CALENDAR_ID"],
             "startDate": start.isoformat()[:10],
             "startTime": start.isoformat()[11:16],
             "endDate": end.isoformat()[:10],
@@ -173,7 +169,7 @@ def format_event_data(item):
             "draft": 0
         }
     except Exception as e:
-        with open(data["ERROR_FILE_PATH"], 'w') as f:
+        with open(config['CONFIG']["ERROR_FILE_PATH"], 'w') as f:
             f.write(str(e))
 
 async def check_same_number_of_events(event_api):
@@ -233,7 +229,7 @@ async def check_same_number_of_events(event_api):
         if len(wigor_data) != len(events_data_ecal):
             await main()
     except Exception as e:
-        with open(data["ERROR_FILE_PATH"], 'w') as f:
+        with open(config['CONFIG']["ERROR_FILE_PATH"], 'w') as f:
             f.write(str(e))
 
 async def main():
@@ -245,7 +241,7 @@ async def main():
     removes duplicate events, and checks if the number of events is the same between Wigor and the API.
     """
     try:
-        event_api = ecal_api.EventAPI(data["ECAL_API_KEY"], data["ECAL_API_SECRET"])
+        event_api = ecal_api.EventAPI(config['CONFIG']["ECAL_API_KEY"], config['CONFIG']["ECAL_API_SECRET"])
 
         cookies = await get_cookies()
 
@@ -329,7 +325,7 @@ async def main():
         # Check if the number of events is the same between Wigor and the API
         await check_same_number_of_events(event_api)
     except Exception as e:
-        with open(data["ERROR_FILE_PATH"], 'w') as f:
+        with open(config['CONFIG']["ERROR_FILE_PATH"], 'w') as f:
             f.write(str(e))
 
 # Execute the main function
