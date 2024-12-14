@@ -28,11 +28,11 @@ error_file_path: /app/errors.txt
 2. Placez-vous dans le répertoire du projet.
 3. Créez et démarrez un conteneur à partir du fichier.
 ```
-docker-compose up --build
+docker compose up --build
 ```
 4. Relancer le conteneur après exteiction
 ```
-docker-compose up
+docker compose up
 ```
 
 ## Utilisation
