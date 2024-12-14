@@ -1,0 +1,8 @@
+moncampus_username: Username of MonCampus
+moncampus_password: Password of MonCampus
+moncampus_start_date: Start date of fetching events from MonCampus
+moncampus_end_date: End date of fetching events from MonCampus
+ecal_api_key: Your API Key from ecal.com
+ecal_api_secret: Your API Secret from ecal.com
+ecal_calendar_id: Your Calendar ID from ecal.com
+error_file_path: /app/errors.txt

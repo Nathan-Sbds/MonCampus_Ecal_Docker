@@ -6,32 +6,33 @@ Ce projet configure un conteneur Docker pour synchroniser les événements entre
 
 - Docker installé sur votre machine
 
+## Configuration
+
+Le fichier `config.yml` doit être configuré avec vos informations personnelles et les clés API nécessaires. Veuillez ne pas modifier la valeur de `error_file_path` si vous ne savez pas ce que vous faites.
+
+```yaml
+[CONFIG]
+moncampus_username: Username of MonCampus
+moncampus_password: Password of MonCampus
+moncampus_start_date: Start date of fetching events from MonCampus
+moncampus_end_date: End date of fetching events from MonCampus
+ecal_api_key: Your API Key from ecal.com
+ecal_api_secret: Your API Secret from ecal.com
+ecal_calendar_id: Your Calendar ID from ecal.com
+error_file_path: /app/errors.txt
+```
+
 ## Installation
 
 1. Clonez ce dépôt sur votre machine locale.
 2. Placez-vous dans le répertoire du projet.
-3. Construisez l'image Docker.
+3. Créez et démarrez un conteneur à partir du fichier.
 ```
-docker build -t moncampus_ecal_docker .
+docker-compose up --build
 ```
-4. Créez et démarrez un conteneur à partir de l'image.
+4. Relancer le conteneur après exteiction
 ```
-docker run -d --name MonCampus_Ecal_Docker_Container moncampus_ecal_docker
-```
-## Configuration
-
-Le fichier `config.ini` doit être configuré avec vos informations personnelles et les clés API nécessaires. Veuillez ne pas modifier la valeur de ERROR_FILE_PATH si vous ne savez pas ce que vous faites.
-
-```json
-[CONFIG]
-MONCAMPUS_USERNAME: Username of MonCampus
-MONCAMPUS_PASSWORD: Password of MonCampus
-MONCAMPUS_START_DATE: Start date of fetching events from MonCampus
-MONCAMPUS_END_DATE: End date of fetching events from MonCampus
-ECAL_API_KEY: Your API Key from ecal.com
-ECAL_API_SECRET: Your API Secret from ecal.com
-ECAL_CALENDAR_ID: Your Calendar ID from ecal.com
-ERROR_FILE_PATH: /app/errors.txt
+docker-compose up
 ```
 
 ## Utilisation
@@ -50,9 +51,9 @@ Les dépendances Python nécessaires sont listées dans le fichier `requirements
 
 ## Structure du projet
  - `Dockerfile`: Définit l'image Docker.
- - `config.ini`: Contient les configurations nécessaires.
+ - `docker-compose.yml`: 
+ - `config.yml`: Contient les configurations nécessaires.
  - `app/requirements.txt`: Liste des dépendances Python.
- - `app/entrypoint.sh`: Script d'entrée pour démarrer le service cron.
  - `app/cronjob`: Définit les tâches cron.
  - `app/agenda.py`: Script principal pour la synchronisation des événements.
 

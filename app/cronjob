@@ -1,1 +1,1 @@
-46 6-18 * * * DISPLAY=:99 /app/venv/bin/python3 /app/agenda.py >> /var/log/cron.log 2>&1
+46 6-18 * * * /bin/bash -c "/app/venv/bin/python3 /app/agenda.py >> /var/log/cron.log 2>&1 "

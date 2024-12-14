@@ -1,15 +1,13 @@
-import ecal_api, requests, asyncio, json, os, configparser
+import ecal_api, requests, asyncio, json, os, yaml
 from random import randint
 from datetime import timedelta, datetime
 from dateutil import parser
+from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium import webdriver
-from selenium.webdriver.firefox.service import Service
-from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.common.by import By
 
-
-config = configparser.ConfigParser()
-config.read('config.ini')
-
+with open("/app/config.yml", "r") as file:
+    config = yaml.safe_load(file)
 
 async def remove_duplicates_from_api(event_api):
     """
@@ -76,39 +74,45 @@ async def remove_duplicates_from_api(event_api):
             ecal_api.EventAPI.delete_event(event_api, duplicate["id"])
 
     except Exception as e:
-        with open(config['CONFIG']["ERROR_FILE_PATH"], 'w') as f:
+        with open(config['error_file_path'], 'w') as f:
             f.write(str(e))
 
 async def get_cookies():
     """
     Récupère les cookies de session après connexion.
     """
-    username = "MONCAMPUS_USERNAME"
-    password = "MONCAMPUS_PASSWORD"
+    username = config['moncampus_username']
+    password = config['moncampus_password']
     url = "https://ws-edt-igs.wigorservices.net"
 
-    options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.binary_location = "/usr/bin/firefox" 
-    
-    service = Service("/usr/local/bin/geckodriver")
-    driver = webdriver.Firefox(service=service, options=options)
+    options = ChromeOptions()
 
+    driver = None
+    cookies = None
+    
     try:
+        driver = webdriver.Remote(options=options, command_executor="http://selenium-hub:4444")
+
+        # Open the login page
         driver.get(url)
         
-        # Remplir le formulaire de connexion
-        driver.find_element("id", "username").send_keys(username)
-        driver.find_element("id", "password").send_keys(password)
-        driver.find_element("css selector", "button[type='submit']").click()
-        
-        # Attendre la redirection et récupérer les cookies
-        driver.implicitly_wait(10)  # Peut être ajusté si nécessaire
+        # Fill in the login form
+        driver.find_element(By.ID, "username").send_keys(username)
+        driver.find_element(By.ID, "password").send_keys(password)
+        driver.find_element(By.CLASS_NAME, 'mdc-button--raised.btn.btn-primary.btn-primary').click()
+                
+        # Wait for redirection and retrieve cookies
+        driver.implicitly_wait(5)  # Adjust if needed
+
         cookies = {cookie['name']: cookie['value'] for cookie in driver.get_cookies()}
+    
+    except Exception as e:
+        with open(config['error_file_path'], 'w') as f:
+            f.write(str(e))
+
     finally:
-        driver.quit()
+        if driver is not None:
+            driver.quit()
 
     return cookies
 
@@ -126,13 +130,13 @@ async def fetch_wigor_data(cookies):
         list: List of retrieved data.
     """
     try:
-        start_date = config['CONFIG']["MONCAMPUS_START_DATE"]
-        end_date = config['CONFIG']["MONCAMPUS_END_DATE"]
+        start_date = config['moncampus_start_date']
+        end_date = config['moncampus_end_date']
         url = f"https://ws-edt-igs.wigorservices.net/Home/Get?sort=&group=&filter=&dateDebut={start_date}T00:00:00.000Z&dateFin={end_date}T23:59:59.000Z"
         response = requests.get(url, cookies=cookies)
         return response.json()["Data"] if response.status_code == 200 else None
     except Exception as e:
-        with open(config['CONFIG']["ERROR_FILE_PATH"], 'w') as f:
+        with open(config['error_file_path'], 'w') as f:
             f.write(str(e))
 
 def format_event_data(item):
@@ -159,7 +163,7 @@ def format_event_data(item):
         return {
             "name": item['Commentaire'],
             "location": item['Salles'],
-            "calendarId": config['CONFIG']["ECAL_CALENDAR_ID"],
+            "calendarId": config['ecal_calendar_id'],
             "startDate": start.isoformat()[:10],
             "startTime": start.isoformat()[11:16],
             "endDate": end.isoformat()[:10],
@@ -169,7 +173,7 @@ def format_event_data(item):
             "draft": 0
         }
     except Exception as e:
-        with open(config['CONFIG']["ERROR_FILE_PATH"], 'w') as f:
+        with open(config['error_file_path'], 'w') as f:
             f.write(str(e))
 
 async def check_same_number_of_events(event_api):
@@ -229,7 +233,7 @@ async def check_same_number_of_events(event_api):
         if len(wigor_data) != len(events_data_ecal):
             await main()
     except Exception as e:
-        with open(config['CONFIG']["ERROR_FILE_PATH"], 'w') as f:
+        with open(config['error_file_path'], 'w') as f:
             f.write(str(e))
 
 async def main():
@@ -241,12 +245,15 @@ async def main():
     removes duplicate events, and checks if the number of events is the same between Wigor and the API.
     """
     try:
-        event_api = ecal_api.EventAPI(config['CONFIG']["ECAL_API_KEY"], config['CONFIG']["ECAL_API_SECRET"])
+        
+        event_api = ecal_api.EventAPI(config['ecal_api_key'], config['ecal_api_secret'])
 
         cookies = await get_cookies()
 
         wigor_data = await fetch_wigor_data(cookies)
 
+        with open(config['error_file_path'], 'w') as f:
+            f.write(f"{wigor_data}")
         if wigor_data is None:
             return
 
@@ -257,7 +264,12 @@ async def main():
         while True:
             events = ecal_api.EventAPI.get_events(event_api, params={"showPastEvents": True, "page": page_index, "limit": 100})
             if "result" in events and events["status"] != "No content":
+                with open(config['error_file_path'], 'w') as f:
+                    f.write("Error: " + str(events))
                 return await main()
+
+            with open(config['error_file_path'], 'w') as f:
+                f.write("No error: " + str(events))
 
             if "data" in events:
                 # Add events to the list if they are not already present
@@ -325,7 +337,7 @@ async def main():
         # Check if the number of events is the same between Wigor and the API
         await check_same_number_of_events(event_api)
     except Exception as e:
-        with open(config['CONFIG']["ERROR_FILE_PATH"], 'w') as f:
+        with open(config['error_file_path'], 'w') as f:
             f.write(str(e))
 
 # Execute the main function
