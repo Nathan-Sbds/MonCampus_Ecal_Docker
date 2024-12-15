@@ -5,35 +5,21 @@ services:
       dockerfile: Dockerfile
     container_name: moncampusecal
     depends_on:
-      - chrome
+      - selenium
     networks:
       - selenium_network
     restart: always
 
-  chrome:
-    image: selenium/node-firefox:4.1.2-20220427
-    shm_size: 2gb
-    depends_on:
-      - selenium-hub
+  selenium:
+    image: selenium/standalone-firefox:4.27.0
     environment:
-      - SE_EVENT_BUS_HOST=selenium-hub
-      - SE_EVENT_BUS_PUBLISH_PORT=4442
-      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
-    ports:
-      - "6900:5900"
-    networks:
-      - selenium_network
-    platform: linux/arm64
-
-  selenium-hub:
-    image: selenium/hub:4.1.2-20220427
-    container_name: selenium-hub
+      - SE_NODE_HOST=localhost
+      - SE_NODE_PORT=5555
+      - SE_ENABLE_TRACING=false
     ports:
       - "4444:4444"
     networks:
       - selenium_network
-    platform: linux/arm64
-
 networks:
   selenium_network:
     driver: bridge
