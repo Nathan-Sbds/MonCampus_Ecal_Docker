@@ -23,6 +23,7 @@ services:
       - "6900:5900"
     networks:
       - selenium_network
+    platform: linux/arm64
 
   selenium-hub:
     image: selenium/hub:4.0.0-rc-1-prerelease-20210823
@@ -31,6 +32,7 @@ services:
       - "4444:4444"
     networks:
       - selenium_network
+    platform: linux/arm64
 
 networks:
   selenium_network:
