@@ -91,7 +91,7 @@ async def get_cookies():
     cookies = None
     
     try:
-        driver = webdriver.Remote(options=options, command_executor="http://selenium-hub:4444")
+        driver = webdriver.Remote(options=options, command_executor="http://selenium:4444")
 
         # Open the login page
         driver.get(url)
