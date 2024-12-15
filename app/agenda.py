@@ -2,7 +2,7 @@ import ecal_api, requests, asyncio, json, os, yaml
 from random import randint
 from datetime import timedelta, datetime
 from dateutil import parser
-from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 
@@ -85,7 +85,7 @@ async def get_cookies():
     password = config['moncampus_password']
     url = "https://ws-edt-igs.wigorservices.net"
 
-    options = ChromeOptions()
+    options = FirefoxOptions()
 
     driver = None
     cookies = None

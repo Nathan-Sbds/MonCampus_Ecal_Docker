@@ -11,7 +11,7 @@ services:
     restart: always
 
   chrome:
-    image: selenium/node-chrome:4.0.0-rc-1-prerelease-20210823
+    image: selenium/node-firefox:4.1.2-20220427
     shm_size: 2gb
     depends_on:
       - selenium-hub
@@ -26,7 +26,7 @@ services:
     platform: linux/arm64
 
   selenium-hub:
-    image: selenium/hub:4.0.0-rc-1-prerelease-20210823
+    image: selenium/hub:4.1.2-20220427
     container_name: selenium-hub
     ports:
       - "4444:4444"
