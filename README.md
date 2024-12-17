@@ -211,7 +211,7 @@ Les contributions sont les bienvenues !
 1. Forkez le projet.  
 2. Créez une branche pour vos modifications :  
 ```bash
-   git checkout -b ma-nouvelle-fonctionnalite  
+git checkout -b ma-nouvelle-fonctionnalite  
 ```
 3. Poussez vos modifications et soumettez une pull request.  
 
