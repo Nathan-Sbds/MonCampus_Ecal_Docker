@@ -1,8 +1,8 @@
-moncampus_username: Username of MonCampus
-moncampus_password: Password of MonCampus
-moncampus_start_date: Start date of fetching events from MonCampus
-moncampus_end_date: End date of fetching events from MonCampus
-ecal_api_key: Your API Key from ecal.com
-ecal_api_secret: Your API Secret from ecal.com
-ecal_calendar_id: Your Calendar ID from ecal.com
-error_file_path: /app/errors.txt
+moncampus_username: Votre nom d'utilisateur MonCampus  
+moncampus_password: Votre mot de passe MonCampus  
+moncampus_start_date: Date de début (AAAA-MM-JJ) pour récupérer les événements MonCampus  
+moncampus_end_date: Date de fin (AAAA-MM-JJ) pour récupérer les événements MonCampus  
+ecal_api_key: Votre clé API ecal.com  
+ecal_api_secret: Votre clé secrète API ecal.com  
+ecal_calendar_id: L'ID de votre calendrier sur ecal.com  
+error_file_path: /app/errors.txt 
