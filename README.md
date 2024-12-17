@@ -108,7 +108,7 @@ Une fois le conteneur démarré, un service cron est activé pour exécuter auto
 
 Vous pouvez également exécuter manuellement le script principal depuis le conteneur pour tester et/ou initialiser les premiers évenements (recommandé en cas de premier lancement) :  
 ```bash
-docker exec -it moncampusecal python /app/agenda.py  
+docker exec -it moncampusecal /app/venv/bin/python3 /app/agenda.py 
 ```
 
 ---
