@@ -60,7 +60,7 @@ Après avoir récupéré ces éléments, vous pouvez les insérer dans votre fic
 Vous êtes maintenant prêt à partager et utiliser votre calendrier. Il est désormais possible de s'y abonner depuis n'importe quel appareil compatible.
 </details>
 
-Il est également nécessaire d'ajouter manuellement un premier évenement dans votre calendrier. <details>
+Il est également nécessaire d'ajouter manuellement un premier évenement dans votre calendrier. (Il sera automatiquement supprimer après l'exécution du script) <details>
   <summary>Pour cela vous pouvez suivre les étapes suivantes :</summary>
   
 1. **Gérer les Calendriers** : Dans le tableau de bord, naviguez vers `Schedules & Events` puis `Manage Schedules`.
