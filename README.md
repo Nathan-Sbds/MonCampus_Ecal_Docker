@@ -78,7 +78,7 @@ Pour des informations détaillées sur l'utilisation de l'API d'ECAL, consultez 
 
 ## Configuration
 
-Avant de démarrer, configurez le fichier `config.yml` avec vos informations personnelles et les clés API nécessaires :  
+Avant de démarrer, configurez le fichier `config.yml` avec vos informations personnelles et les clés API nécessaires : (Veillez à ne pas mettre de commentaires quelconques dans ce fichier) 
 
 ```yaml
 [CONFIG]
