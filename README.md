@@ -60,14 +60,17 @@ Après avoir récupéré ces éléments, vous pouvez les insérer dans votre fic
 Vous êtes maintenant prêt à partager et utiliser votre calendrier. Il est désormais possible de s'y abonner depuis n'importe quel appareil compatible.
 </details>
 
-Il est également nécessaire d'ajouter manuellement un premier évenement dans votre calendrier. Pour cela vous pouvez suivre les étapes suivantes :
+Il est également nécessaire d'ajouter manuellement un premier évenement dans votre calendrier. <details>
+  <summary>Pour cela vous pouvez suivre les étapes suivantes :</summary>
+  
 1. **Gérer les Calendriers** : Dans le tableau de bord, naviguez vers `Schedules & Events` puis `Manage Schedules`.
 2. **Gérer les Événements** : Cliquez sur la roue dentée de réglages nommée `Manage Events`.
 3. **Créer un évenement** : Cliquez sur le bouton vert nommée `Add` et remplissez les informations de l'onglet `Event Details`.
 4. **Enregistrer l'évenement** : Appuyez sur `Save`, votre évenement est maintenant créé.
 5. **Mettre en Ligne** : Sélectionnez l'évenement nouvellement créé puis cliquez sur le bouton vert nommé `Set Live`.
+  </details>
 
-Vous êtes prêt à lancer et configurer le script.
+Vous êtes prêt à configurer et lancer le script.
 
 Pour des informations détaillées sur l'utilisation de l'API d'ECAL, consultez la [documentation officielle](https://docs.ecal.com/reference/apiv2.html).
 
