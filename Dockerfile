@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
 
 # Set environment variables
 ENV PATH="/app/venv/bin:$PATH"
+ENV CONFIG_FILE="/app/config.yml"
 
 # Copy the requirements file, install dependencies, and remove the requirements file
 COPY ./app/requirements.txt /app/requirements.txt
@@ -19,18 +20,16 @@ RUN python3 -m venv /app/venv && \
     /app/venv/bin/pip install -r /app/requirements.txt && \
     rm /app/requirements.txt
 
-# Convert line endings, set permissions for cronjob, and configure cron
-COPY ./app/cronjob /app/cronjob
-RUN chmod 0644 /app/cronjob && \
-    crontab /app/cronjob && \
-    rm /app/cronjob
-
-# Copy the application source code and configuration file
+# Copy the application source code
 COPY ./app/agenda.py /app/agenda.py
-COPY ./config.yml /app/config.yml
+COPY ./app/setup_cronjobs.sh /app/setup_cronjobs.sh
+RUN chmod +x /app/setup_cronjobs.sh
+
+# Create configs directory
+RUN mkdir -p /app/configs
 
 # Set working directory
 WORKDIR /app
 
-# Start cron
-CMD ["cron", "-f"]
+# Setup cron and start
+CMD ["/app/setup_cronjobs.sh"]

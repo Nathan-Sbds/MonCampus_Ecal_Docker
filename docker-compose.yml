@@ -1,15 +1,23 @@
 services:
-  app:
+  # Service par défaut utilisant config.yml de base
+  app-default:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: moncampusecal
+    container_name: moncampusecal-default
     depends_on:
       - selenium
+    volumes:
+      - ./config.yml:/app/config.yml:ro
+    environment:
+      - CONFIG_FILE=/app/config.yml
+      - INSTANCE_NAME=default
     networks:
       - selenium_network
     restart: always
+    profiles: ["default"]
 
+  # Service Selenium partagé
   selenium:
     image: selenium/standalone-firefox:4.27.0
     environment:
@@ -20,6 +28,7 @@ services:
       - "4444:4444"
     networks:
       - selenium_network
+
 networks:
   selenium_network:
     driver: bridge

@@ -1,4 +1,9 @@
-import ecal_api, requests, asyncio, json, os, yaml
+import sys
+import os
+import yaml
+import asyncio
+import requests
+import ecal_api
 from random import randint
 from datetime import timedelta, datetime
 from dateutil import parser
@@ -6,8 +11,17 @@ from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 
-with open("/app/config.yml", "r") as file:
+# Get config file path from command line argument or use default
+config_file = sys.argv[1] if len(sys.argv) > 1 else "/app/config.yml"
+
+if not os.path.exists(config_file):
+    print(f"Config file {config_file} not found!")
+    sys.exit(1)
+
+with open(config_file, "r") as file:
     config = yaml.safe_load(file)
+
+print(f"Using config: {config_file} - Instance: {config.get('instance_name', 'default')}")
 
 async def remove_duplicates_from_api(event_api):
     """

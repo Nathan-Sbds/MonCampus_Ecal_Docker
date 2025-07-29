@@ -1,8 +1,13 @@
-moncampus_username: Votre nom d'utilisateur MonCampus  
-moncampus_password: Votre mot de passe MonCampus  
-moncampus_start_date: Date de début (AAAA-MM-JJ) pour récupérer les événements MonCampus  
-moncampus_end_date: Date de fin (AAAA-MM-JJ) pour récupérer les événements MonCampus  
-ecal_api_key: Votre clé API ecal.com  
-ecal_api_secret: Votre clé secrète API ecal.com  
-ecal_calendar_id: L'ID de votre calendrier sur ecal.com  
-error_file_path: /app/errors.txt 
+# Configuration par défaut pour MonCampus ECAL Docker
+# Ce fichier sert de modèle et de configuration par défaut
+# Copiez ce fichier dans configs/ avec un nom spécifique pour créer de nouvelles instances
+
+moncampus_username: "votre_username_moncampus"
+moncampus_password: "votre_password_moncampus"
+moncampus_start_date: "2025-01-01"
+moncampus_end_date: "2025-12-31"
+ecal_api_key: "votre_api_key_ecal"
+ecal_api_secret: "votre_api_secret_ecal"
+ecal_calendar_id: "votre_calendar_id"
+error_file_path: "/app/errors_default.txt"
+instance_name: "default" 
