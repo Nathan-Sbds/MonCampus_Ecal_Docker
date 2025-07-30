@@ -50,7 +50,7 @@ function show_help() {
 function build_images() {
     echo -e "${YELLOW}Construction des images Docker...${NC}"
     ensure_compose_updated
-    docker-compose build
+    docker compose build
 }
 
 function start_services() {
@@ -61,14 +61,14 @@ function start_services() {
     
     if [ -z "$config_name" ]; then
         echo -e "${GREEN}Démarrage de toutes les instances...${NC}"
-        docker-compose up -d
+        docker compose up -d
     elif [ "$config_name" = "default" ]; then
         echo -e "${GREEN}Démarrage de l'instance par défaut...${NC}"
         if [ ! -f "$SCRIPT_DIR/config.yml" ]; then
             echo -e "${RED}Erreur: Configuration par défaut non trouvée${NC}"
             exit 1
         fi
-        docker-compose --profile default up -d app-default selenium
+        docker compose --profile default up -d app-default selenium
     else
         echo -e "${GREEN}Démarrage de l'instance $config_name...${NC}"
         if [ ! -f "$CONFIGS_DIR/${config_name}.yml" ]; then
@@ -77,7 +77,7 @@ function start_services() {
             list_configs
             exit 1
         fi
-        docker-compose up -d app-$config_name selenium
+        docker compose up -d app-$config_name selenium
     fi
 }
 
@@ -86,14 +86,14 @@ function stop_services() {
     
     if [ -z "$config_name" ]; then
         echo -e "${YELLOW}Arrêt de tous les services...${NC}"
-        docker-compose down
-        docker-compose --profile default down
+        docker compose down
+        docker compose --profile default down
     elif [ "$config_name" = "default" ]; then
         echo -e "${YELLOW}Arrêt de l'instance par défaut...${NC}"
-        docker-compose --profile default stop app-default
+        docker compose --profile default stop app-default
     else
         echo -e "${YELLOW}Arrêt de l'instance $config_name...${NC}"
-        docker-compose stop app-$config_name
+        docker compose stop app-$config_name
     fi
 }
 
@@ -109,28 +109,28 @@ function show_logs() {
     
     if [ -z "$config_name" ]; then
         echo -e "${BLUE}Logs de tous les services:${NC}"
-        docker-compose logs -f
-        docker-compose --profile default logs -f
+        docker compose logs -f
+        docker compose --profile default logs -f
     elif [ "$config_name" = "default" ]; then
         echo -e "${BLUE}Logs de l'instance par défaut:${NC}"
-        docker-compose --profile default logs -f app-default
+        docker compose --profile default logs -f app-default
     else
         echo -e "${BLUE}Logs de l'instance $config_name:${NC}"
-        docker-compose logs -f app-$config_name
+        docker compose logs -f app-$config_name
     fi
 }
 
 function show_status() {
     echo -e "${BLUE}Status des services:${NC}"
-    docker-compose ps
+    docker compose ps
     echo -e "${BLUE}Status du service par défaut:${NC}"
-    docker-compose --profile default ps
+    docker compose --profile default ps
 }
 
 function clean_all() {
     echo -e "${YELLOW}Nettoyage des containers et images...${NC}"
-    docker-compose down --rmi all --volumes --remove-orphans
-    docker-compose --profile default down --rmi all --volumes --remove-orphans
+    docker compose down --rmi all --volumes --remove-orphans
+    docker compose --profile default down --rmi all --volumes --remove-orphans
 }
 
 function list_configs() {
@@ -177,15 +177,15 @@ function add_config() {
     
     cat > "$config_file" << EOF
 # Configuration pour $config_name
-moncampus_username: "votre_username_moncampus"
-moncampus_password: "votre_password_moncampus"
-moncampus_start_date: "2025-01-01"
-moncampus_end_date: "2025-12-31"
-ecal_api_key: "votre_api_key_ecal"
-ecal_api_secret: "votre_api_secret_ecal"
-ecal_calendar_id: "votre_calendar_id"
-error_file_path: "/app/errors_${config_name}.txt"
-instance_name: "$config_name"
+moncampus_username: votre_username_moncampus
+moncampus_password: votre_password_moncampus
+moncampus_start_date: 2025-01-01
+moncampus_end_date: 2025-12-31
+ecal_api_key: votre_api_key_ecal
+ecal_api_secret: votre_api_secret_ecal
+ecal_calendar_id: votre_calendar_id
+error_file_path: /app/errors_${config_name}.txt
+instance_name: $config_name
 EOF
     
     echo -e "${GREEN}Configuration $config_name créée dans $config_file${NC}"
@@ -219,15 +219,15 @@ function ensure_compose_updated() {
     fi
 }
 
-# Vérifier que Docker et docker-compose sont installés
+# Vérifier que Docker et docker compose sont installés
 check_dependencies() {
     if ! command -v docker &> /dev/null; then
         echo -e "${RED}Docker n'est pas installé${NC}"
         exit 1
     fi
     
-    if ! command -v docker-compose &> /dev/null; then
-        echo -e "${RED}docker-compose n'est pas installé${NC}"
+    if ! command -v docker compose &> /dev/null; then
+        echo -e "${RED}docker compose n'est pas installé${NC}"
         exit 1
     fi
 }
