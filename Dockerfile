@@ -23,7 +23,8 @@ RUN python3 -m venv /app/venv && \
 # Copy the application source code
 COPY ./app/agenda.py /app/agenda.py
 COPY ./app/setup_cronjobs.sh /app/setup_cronjobs.sh
-RUN chmod +x /app/setup_cronjobs.sh
+# Ensure script has LF line endings inside the image to avoid /bin/bash seeing CR (Windows CRLF)
+RUN sed -i 's/\r$//' /app/setup_cronjobs.sh && chmod +x /app/setup_cronjobs.sh
 
 # Create configs directory
 RUN mkdir -p /app/configs
@@ -32,4 +33,5 @@ RUN mkdir -p /app/configs
 WORKDIR /app
 
 # Setup cron and start
-CMD ["/app/setup_cronjobs.sh"]
+# Setup cron and start via bash (avoid relying on PATH/executable lookups)
+CMD ["/bin/bash", "/app/setup_cronjobs.sh"]

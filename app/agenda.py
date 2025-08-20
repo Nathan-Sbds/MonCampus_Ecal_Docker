@@ -10,6 +10,8 @@ from dateutil import parser
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+import sqlite3
+
 
 # Get config file path from command line argument or use default
 config_file = sys.argv[1] if len(sys.argv) > 1 else "/app/config.yml"
@@ -23,51 +25,95 @@ with open(config_file, "r") as file:
 
 print(f"Using config: {config_file} - Instance: {config.get('instance_name', 'default')}")
 
-async def remove_duplicates_from_api(event_api):
+# --- SQLITE DB SETUP ---
+DB_PATH = config.get('sqlite_db_path', '/app/events.db')
+
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS events (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        location TEXT,
+        calendarId TEXT,
+        startDate TEXT,
+        startTime TEXT,
+        endDate TEXT,
+        endTime TEXT,
+        alert TEXT,
+        details TEXT,
+        draft INTEGER,
+        reference TEXT
+    )''')
+    conn.commit()
+    conn.close()
+
+def get_all_events_from_db():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('SELECT name, location, calendarId, startDate, startTime, endDate, endTime, alert, details, draft, reference, id FROM events')
+    rows = c.fetchall()
+    conn.close()
+    events = []
+    for row in rows:
+        events.append({
+            "name": row[0],
+            "location": row[1],
+            "calendarId": row[2],
+            "startDate": row[3],
+            "startTime": row[4],
+            "endDate": row[5],
+            "endTime": row[6],
+            "alert": row[7],
+            "details": row[8],
+            "draft": row[9],
+            "reference": row[10],
+            "id": row[11]
+        })
+    return events
+
+def insert_event_to_db(event, event_id):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('''INSERT OR REPLACE INTO events (id, name, location, calendarId, startDate, startTime, endDate, endTime, alert, details, draft, reference) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+        (event_id, event["name"], event["location"], event["calendarId"], event["startDate"], event["startTime"], event["endDate"], event["endTime"], event["alert"], event["details"], event["draft"], event.get("reference", None)))
+    conn.commit()
+    conn.close()
+
+def delete_event_from_db(event_id):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('DELETE FROM events WHERE id = ?', (event_id,))
+    conn.commit()
+    conn.close()
+
+def clear_db():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('DELETE FROM events')
+    conn.commit()
+    conn.close()
+
+init_db()
+
+def find_similar_event_in_db(event):
+    """Return (id, reference) for a DB event matching key fields, or None."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('''SELECT id, reference FROM events WHERE name = ? AND startDate = ? AND startTime = ? AND endDate = ? AND endTime = ? AND location = ? LIMIT 1''',
+              (event.get('name'), event.get('startDate'), event.get('startTime'), event.get('endDate'), event.get('endTime'), event.get('location')))
+    row = c.fetchone()
+    conn.close()
+    return row
+
+def remove_duplicates_from_db_and_api(event_api):
     """
-    Removes duplicate events from the API.
-
-    This function retrieves all events from the API, identifies duplicates based on event details,
-    and deletes the duplicate events.
-
-    Args:
-        event_api: Instance of the Event API.
+    Supprime les doublons d'événements dans la base locale et l'API ecal.
     """
     try:
-        events_data = []
-        page_index = 1
-
-        # Retrieve all events from the API, page by page
-        while True:
-            events = ecal_api.EventAPI.get_events(event_api, params={"showPastEvents": True, "page": page_index})
-            if "data" in events:
-                # Add events to the list if they are not already present
-                events_data.extend([{
-                    "name": e['name'],
-                    "location": e["location"],
-                    "startDate": e["startDate"],
-                    "startTime": e["startTime"],
-                    "endDate": e["endDate"],
-                    "endTime": e["endTime"],
-                    "id": e["id"]
-                } for e in events["data"] if {
-                    "name": e['name'],
-                    "location": e["location"],
-                    "startDate": e["startDate"],
-                    "startTime": e["startTime"],
-                    "endDate": e["endDate"],
-                    "endTime": e["endTime"],
-                    "id": e["id"]
-                } not in events_data])
-
-                page_index += 1
-            else:
-                break
-
+        events_data = get_all_events_from_db()
         seen = set()
         duplicates = []
-
-        # Identify duplicate events
         for event in events_data:
             event_key = (
                 event["name"],
@@ -77,16 +123,14 @@ async def remove_duplicates_from_api(event_api):
                 event["endTime"],
                 event["location"]
             )
-
             if event_key in seen:
                 duplicates.append(event)
             else:
                 seen.add(event_key)
-
-        # Delete duplicate events
         for duplicate in duplicates:
-            ecal_api.EventAPI.delete_event(event_api, duplicate["id"])
-
+            if duplicate.get("id"):
+                ecal_api.EventAPI.delete_event(event_api, duplicate["id"])
+                delete_event_from_db(duplicate["id"])
     except Exception as e:
         with open(config['error_file_path'], 'w') as f:
             f.write(str(e))
@@ -119,11 +163,9 @@ async def get_cookies():
         driver.implicitly_wait(5)  # Adjust if needed
 
         cookies = {cookie['name']: cookie['value'] for cookie in driver.get_cookies()}
-    
     except Exception as e:
         with open(config['error_file_path'], 'w') as f:
             f.write(str(e))
-
     finally:
         if driver is not None:
             driver.quit()
@@ -148,10 +190,12 @@ async def fetch_wigor_data(cookies):
         end_date = config['moncampus_end_date']
         url = f"https://ws-edt-igs.wigorservices.net/Home/Get?sort=&group=&filter=&dateDebut={start_date}T00:00:00.000Z&dateFin={end_date}T23:59:59.000Z"
         response = requests.get(url, cookies=cookies)
-        return response.json()["Data"] if response.status_code == 200 else None
+        data = response.json().get("Data") if response.status_code == 200 else None
+        return data
     except Exception as e:
         with open(config['error_file_path'], 'w') as f:
             f.write(str(e))
+        return None
 
 def format_event_data(item):
     """
@@ -174,7 +218,7 @@ def format_event_data(item):
         # Retrieve Teams URL if present
         teams_url = item['TeamsUrl'].split('"')[1] if item['TeamsUrl'] is not None else None
 
-        return {
+        result = {
             "name": item['Commentaire'],
             "location": item['Salles'],
             "calendarId": config['ecal_calendar_id'],
@@ -186,6 +230,7 @@ def format_event_data(item):
             "details": f"Intervenant : {item.get('NomProf', 'Aucun Intervenant')}\nNom complet du cours : {item['LibelleGroupe']}\n{'' if teams_url is None else 'Lien Teams : '+teams_url}",
             "draft": 0
         }
+        return result
     except Exception as e:
         with open(config['error_file_path'], 'w') as f:
             f.write(str(e))
@@ -207,148 +252,80 @@ async def check_same_number_of_events(event_api):
         if wigor_data is None:
             return
 
-        events_data_ecal = []
-        page_index = 1
-
-        # Retrieve all events from the API, page by page
-        while True:
-            events = ecal_api.EventAPI.get_events(event_api, params={"showPastEvents": True, "page": page_index, "limit": 100})
-            if "data" in events:
-                # Add events to the list if they are not already present
-                events_data_ecal.extend([{
-                    "name": e['name'],
-                    "location": e["location"],
-                    "calendarId": e["calendarId"],
-                    "startDate": e["startDate"],
-                    "startTime": e["startTime"],
-                    "endDate": e["endDate"],
-                    "endTime": e["endTime"],
-                    "alert": e["alert"],
-                    "details": e["details"],
-                    "draft": e["draft"]
-                } for e in events["data"] if {
-                    "name": e['name'],
-                    "location": e["location"],
-                    "calendarId": e["calendarId"],
-                    "startDate": e["startDate"],
-                    "startTime": e["startTime"],
-                    "endDate": e["endDate"],
-                    "endTime": e["endTime"],
-                    "alert": e["alert"],
-                    "details": e["details"],
-                    "draft": e["draft"]
-                } not in events_data_ecal])
-
-                page_index += 1
-            else:
-                break
-
-        # Compare the number of events between Wigor and the API
-        if len(wigor_data) != len(events_data_ecal):
+        # Compare number using local DB to avoid heavy API calls
+        events_data_db = get_all_events_from_db()
+        if len(wigor_data) != len(events_data_db):
             await main()
     except Exception as e:
         with open(config['error_file_path'], 'w') as f:
             f.write(str(e))
 
+
 async def main():
     """
-    Main function to synchronize events between Wigor and the API.
-
-    This function retrieves event data from Wigor and the API, formats the data, creates new events
-    in the API if they are not present, deletes events from the API if they are not present in Wigor,
-    removes duplicate events, and checks if the number of events is the same between Wigor and the API.
+    Main function to synchronize events between Wigor, the API, and the local SQLite DB.
     """
     try:
-        
         event_api = ecal_api.EventAPI(config['ecal_api_key'], config['ecal_api_secret'])
-
-        cookies = await get_cookies()
-
-        wigor_data = await fetch_wigor_data(cookies)
-
-        with open(config['error_file_path'], 'w') as f:
-            f.write(f"{wigor_data}")
-        if wigor_data is None:
-            return
-
-        events_data_ecal = []
+        # --- Synchronisation initiale DB <-> API ecal ---
+        # Do NOT clear DB to avoid removing local records unexpectedly.
+        clear_db()
         page_index = 1
-
-        # Retrieve all events from the API, page by page
+        total_loaded = 0
         while True:
-            events = ecal_api.EventAPI.get_events(event_api, params={"showPastEvents": True, "page": page_index, "limit": 100})
-            if "result" in events and events["status"] != "No content":
-                with open(config['error_file_path'], 'w') as f:
-                    f.write("Error: " + str(events))
-                return await main()
-
-            with open(config['error_file_path'], 'w') as f:
-                f.write("No error: " + str(events))
-
+            events = ecal_api.EventAPI.get_events(event_api, params={"showPastEvents": True, "page": page_index, "limit": 100, "calendarIds": config['ecal_calendar_id']})
             if "data" in events:
-                # Add events to the list if they are not already present
-                events_data_ecal.extend([{
-                    "name": e['name'],
-                    "location": e["location"],
-                    "calendarId": e["calendarId"],
-                    "startDate": e["startDate"],
-                    "startTime": e["startTime"],
-                    "endDate": e["endDate"],
-                    "endTime": e["endTime"],
-                    "alert": e["alert"],
-                    "details": e["details"],
-                    "draft": e["draft"]
-                } for e in events["data"] if {
-                    "name": e['name'],
-                    "location": e["location"],
-                    "calendarId": e["calendarId"],
-                    "startDate": e["startDate"],
-                    "startTime": e["startTime"],
-                    "endDate": e["endDate"],
-                    "endTime": e["endTime"],
-                    "alert": e["alert"],
-                    "details": e["details"],
-                    "draft": e["draft"]
-                } not in events_data_ecal])
-
+                for e in events["data"]:
+                    event = {
+                        "name": e['name'],
+                        "location": e["location"],
+                        "calendarId": e["calendarId"],
+                        "startDate": e["startDate"],
+                        "startTime": e["startTime"],
+                        "endDate": e["endDate"],
+                        "endTime": e["endTime"],
+                        "alert": e["alert"],
+                        "details": e["details"],
+                        "draft": e["draft"],
+                        "reference": e.get("reference", None)
+                    }
+                    insert_event_to_db(event, e["id"])
+                    total_loaded += 1
                 page_index += 1
-
             else:
                 break
 
-        if len(events_data_ecal) == 0:
-            return await main()
+        # --- Nettoyage des doublons via la DB locale ---
+        remove_duplicates_from_db_and_api(event_api)
 
-        # Format Wigor event data
+        # --- Synchronisation Wigor <-> DB <-> API ---
+        cookies = await get_cookies()
+        wigor_data = await fetch_wigor_data(cookies)
+        if wigor_data is None:
+            return
         events_data_moncampus = [format_event_data(item) for item in wigor_data]
+        events_data_db = get_all_events_from_db()
 
-        # Create events that are not present in the API
+        # Ajout des nouveaux événements
+        added = 0
         for event in events_data_moncampus:
-            if event not in events_data_ecal:
+            # check DB first for an equivalent event (even with different id/reference)
+            similar = find_similar_event_in_db(event)
+            if similar:
+                # similar is (id, reference) - ensure DB has the latest reference
+                existing_id, existing_ref = similar
+                if existing_ref is None and event.get('reference'):
+                    insert_event_to_db(event, existing_id)
+                continue
+
+            if event not in events_data_db:
                 event['reference'] = str(randint(0, 10000000))
-                ecal_api.EventAPI.create_event(event_api, event)
+                api_event = ecal_api.EventAPI.create_event(event_api, event)
+                event_id = api_event.get("id") if api_event and "id" in api_event else str(randint(0, 10000000))
+                insert_event_to_db(event, event_id)
+                added += 1
 
-        # Delete events from the API that are not present in Wigor
-        for event_ecal in events_data_ecal:
-            if event_ecal not in events_data_moncampus:
-                similar_events = ecal_api.EventAPI.get_events(event_api, params={"startDate": event_ecal["startDate"], "showPastEvents": True})
-                if "data" in similar_events:
-                    for event in similar_events["data"]:
-                        if all([
-                            event["name"] == event_ecal["name"],
-                            event["startDate"] == event_ecal["startDate"],
-                            event["startTime"] == event_ecal["startTime"],
-                            event["endDate"] == event_ecal["endDate"],
-                            event["endTime"] == event_ecal["endTime"],
-                            event["location"] == event_ecal["location"],
-                            event["calendarId"] == event_ecal["calendarId"]
-                        ]):
-                            ecal_api.EventAPI.delete_event(event_api, event_id=event["id"])
-                            break
-
-        # Remove duplicate events from the API
-        await remove_duplicates_from_api(event_api)
-        # Check if the number of events is the same between Wigor and the API
+        # Vérification du nombre d'événements
         await check_same_number_of_events(event_api)
     except Exception as e:
         with open(config['error_file_path'], 'w') as f:
